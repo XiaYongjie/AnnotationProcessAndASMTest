@@ -1,0 +1,4 @@
+include ':test-compiler'
+include ':test-annotation'
+include ':app'
+rootProject.name = "My Application"
