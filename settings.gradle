@@ -1,4 +1,3 @@
-include ':test-plugin'
 include ':test-compiler'
 include ':test-annotation'
 include ':app'
