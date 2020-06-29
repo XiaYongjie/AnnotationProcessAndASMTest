@@ -8,7 +8,9 @@ dependencies {
     implementation localGroovy()
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation 'com.android.tools.build:gradle:4.0.0'
 }
+
 
 
 uploadArchives {
