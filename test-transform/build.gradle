@@ -1,0 +1,56 @@
+apply plugin: 'java-library'
+apply plugin: 'kotlin'
+apply plugin: 'maven'
+apply plugin: 'groovy'
+
+dependencies {
+    implementation gradleApi()
+    implementation localGroovy()
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+}
+
+
+uploadArchives {
+    repositories {
+        mavenDeployer {//用于发布本地maven
+            pom.groupId = "com.example.plugin.transform"
+            pom.artifactId = "method-timer"
+            pom.version = "0.0.1"
+            repository(url: uri('../maven'))
+        }
+    }
+}
+
+if (project.hasProperty("android")) { // Android libraries
+    task sourcesJar(type: Jar) {
+        classifier = 'sources'
+        from android.sourceSets.main.java.srcDirs
+    }
+
+    task javadoc(type: Javadoc) {
+        source = android.sourceSets.main.java.srcDirs
+        classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+    }
+} else { // Java libraries
+    task sourcesJar(type: Jar, dependsOn: classes) {
+        classifier = 'sources'
+        from sourceSets.main.allSource
+    }
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts {
+//    archives javadocJar
+    archives sourcesJar
+}
+artifacts {
+    archives javadocJar
+    archives sourcesJar
+}
+sourceCompatibility = "1.8"
+targetCompatibility = "1.8"
