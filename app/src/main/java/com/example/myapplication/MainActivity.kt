@@ -1,5 +1,6 @@
 package com.example.myapplication
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.example.test_annotation.MyRouter
@@ -12,16 +13,17 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         hello.setOnClickListener {
-            AppPluginUtils.installApkPlugin(applicationContext)
-            try {
-                val myClass  = classLoader.loadClass("com.example.apkplugin.Test")
-                var test =  myClass.newInstance()
-                var method = test.javaClass.getMethod("print")
-                method.invoke(test)
-
-            }catch (e:Exception){
-                e.printStackTrace()
-            }
+            startActivity(Intent(this,TowActivity::class.java))
+//            AppPluginUtils.installApkPlugin(applicationContext)
+//            try {
+//                val myClass  = classLoader.loadClass("com.example.apkplugin.Test")
+//                var test =  myClass.newInstance()
+//                var method = test.javaClass.getMethod("print")
+//                method.invoke(test)
+//
+//            }catch (e:Exception){
+//                e.printStackTrace()
+//            }
         }
     }
 }
