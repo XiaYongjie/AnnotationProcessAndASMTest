@@ -6,8 +6,8 @@ public class MyApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        HookAMSForP.INSTANCE.hookAMS();
-//        HookAMSJava.hookAMS();
-//        AppPluginUtils.installApkPlugin(getApplicationContext());
+        AppPluginUtils.installApkPlugin(getApplicationContext());
+        HookAMS.INSTANCE.hookAMS(getApplicationContext());
+        HookAMS.INSTANCE.hookHandle();
     }
 }

@@ -13,7 +13,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         hello.setOnClickListener {
-            startActivity(Intent(this,TowActivity::class.java))
+            startActivity(Intent(this, Class.forName("com.example.apkplugin.MainActivity")))
 //            AppPluginUtils.installApkPlugin(applicationContext)
 //            try {
 //                val myClass  = classLoader.loadClass("com.example.apkplugin.Test")
