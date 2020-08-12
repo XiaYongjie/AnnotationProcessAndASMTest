@@ -1,5 +1,5 @@
 include ':apkplugin'
-//include ':test-transform'
+include ':test-transform'
 include ':test-compiler'
 include ':test-annotation'
 include ':app'

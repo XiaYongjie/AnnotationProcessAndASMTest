@@ -4,17 +4,17 @@ import com.android.build.api.transform.*
 import com.android.build.gradle.internal.pipeline.TransformManager
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils
+import org.apache.commons.io.IOUtils
 import org.gradle.api.Project
-import org.gradle.api.logging.LogLevel
+import org.objectweb.asm.ClassReader
+import org.objectweb.asm.ClassReader.EXPAND_FRAMES
+import org.objectweb.asm.ClassWriter
 import java.io.File
 import java.io.FileOutputStream
-import java.io.InputStream
-import java.util.*
 import java.util.jar.JarEntry
 import java.util.jar.JarFile
 import java.util.jar.JarOutputStream
 import java.util.zip.ZipEntry
-import kotlin.collections.HashSet
 
 class MethodTimerTransform(var project: Project) : Transform() {
 
@@ -37,90 +37,128 @@ class MethodTimerTransform(var project: Project) : Transform() {
 
     override fun transform(transformInvocation: TransformInvocation?) {
         super.transform(transformInvocation)
-        val startTime = System.currentTimeMillis()
-         var dir: DirectoryInput? =null
-           val jar = HashSet<JarInput>()
-        val inputs =  transformInvocation?.inputs
-        for (input in inputs!!){
-            var dirInputs = input.directoryInputs
-            for (dirInput in dirInputs){
-                var dest = transformInvocation.outputProvider.getContentLocation(dirInput.name, dirInput.contentTypes, dirInput.scopes, Format.DIRECTORY)
-                project.logger.quiet("------${dest.absolutePath}")
-//                insertInitCodeIntoJarFile(dirInput.file)
-                eachFile(dirInput.file)
+        var startTime = System.currentTimeMillis()
+        println("----------transform start:${startTime}-----------")
+        var inputs = transformInvocation?.inputs
+        val outputProvider = transformInvocation?.outputProvider
+        outputProvider?.deleteAll()
 
-//                { File file ->
-//                    def path = file.absolutePath.replace(root, '')
-//                    if (!leftSlash) {
-//                        path = path.replaceAll("\\\\", "/")
-//                    }
-//                    if(file.isFile() && ScanUtil.shouldProcessClass(path)){
-//                        ScanUtil.scanClass(file)
-//                    }
-//                }
-
-            }
-        }
-//        var dest = transformInvocation?.outputProvider?.getContentLocation(dir?.name,dir?.contentTypes,dir?.scopes, Format.DIRECTORY)
-//        FileUtils.copyDirectory(dir?.file,dest)//目录输出
-//        jar.forEach {//jar输出 ，md5采用jar包名称，因为在重复打包过程中，jar路径会变化，导致包重复
-//            val newName = it.name.replace(".jar","")+ DigestUtils.md5Hex(it.name)//it.name是jar包名称，对应名称唯一
-//            val desFile = transformInvocation?.outputProvider?.getContentLocation(newName,it.contentTypes, it.scopes, Format.JAR)//信息会存在json中
-//            FileUtils.copyFile(it.file, desFile)
-//        }
-//        project.logger.quiet("------${getName()}costtime-----"+(System.currentTimeMillis()-startTime)+"ms")
-
-    }
-
-    private fun eachFile(file: File){
-        if (file.isDirectory){
-            val files =  file.listFiles()
-            if (files.isNotEmpty()){
-                for (tempFile in files){
-                    eachFile(tempFile)
+        inputs?.forEach {
+            it.directoryInputs.forEach { dInput ->
+                try {
+                    handleDirectoryInput(dInput, outputProvider!!)
+                }catch (e:Exception){
+                    e.printStackTrace()
                 }
+
+
             }
-        }else{
-            //
-            classFile(file)
+            it.jarInputs.forEach { jInpt ->
+                try {
+                    handleJarInputs(jInpt, outputProvider!!)
+                }catch (e:Exception){
+                    e.printStackTrace()
+                }
+
+
+
+            }
         }
-
+        var endTime = System.currentTimeMillis()
+        println("-----------transform end${endTime}-------------")
+        println("-----------transform cost: ${endTime - startTime}-------------")
     }
-
 
     /**
-     * generate code into jar file
-     * @param jarFile the jar file
-     * @return
+     * 处理文件目录下的class文件
      */
-    private fun insertInitCodeIntoJarFile(jarFile: File) {
-            var optJar =File(jarFile.parent, jarFile.name + ".opt")
-            if (optJar.exists())
-                optJar.delete()
-            val file = JarFile(jarFile)
-            val enumeration = file.entries()
-            val jarOutputStream = JarOutputStream(FileOutputStream(optJar))
+    private fun handleDirectoryInput(
+        directoryInput: DirectoryInput,
+        outputProvider: TransformOutputProvider
+    ) {
+        //是否是目录
+        if (directoryInput.file.isDirectory()) {
+            //列出目录所有文件（包含子文件夹，子文件夹内文件）
+            directoryInput.file.walk().maxDepth(Int.MAX_VALUE).filter { it.isFile }
+                .forEach { file ->
+                    var name = file.name
+                    if (name.endsWith(".class")) {
+                        println("-----------handleDirectoryInput ${name}-----true------")
+                        val classReader = ClassReader(file.readBytes())
+                        val classWriter = ClassWriter(classReader, ClassWriter.COMPUTE_MAXS)
+                        val cv = LifecycleClassVisitor(classWriter)
+                        classReader.accept(cv, EXPAND_FRAMES)
+                        val code = classWriter.toByteArray()
+                        val fos = FileOutputStream(
+                            file.parentFile.absolutePath + File.separator + name
+                        )
+                        fos.write(code)
+                        fos.close()
+                    }
+                }
 
-            while (enumeration.hasMoreElements()) {
-                val jarEntry = enumeration?.nextElement() as JarEntry
-                val entryName = jarEntry.name
-                project.logger.quiet("------entryName-----${entryName}")
-//                val zipEntry =  ZipEntry(entryName)
-//                val inputStream = file.getInputStream(jarEntry)
-//                jarOutputStream.putNextEntry(zipEntry)
-//                inputStream.close()
-//                jarOutputStream.closeEntry()
-            }
-            jarOutputStream.close()
-            file.close()
-
-            if (jarFile.exists()) {
-                jarFile.delete()
-            }
-            optJar.renameTo(jarFile)
         }
+        //处理完输入文件之后，要把输出给下一个任务
+        val dest = outputProvider.getContentLocation(
+            directoryInput.name,
+            directoryInput.contentTypes,
+            directoryInput.scopes,
+            Format.DIRECTORY
+        )
+        FileUtils.copyDirectory(directoryInput.file, dest)
+    }
 
-    private fun classFile(classFile :File){
-        project.logger.quiet("------${classFile.name}")
+    private fun handleJarInputs(jarInput: JarInput, outputProvider: TransformOutputProvider) {
+        if (jarInput.file.absolutePath.endsWith(".jar")) {
+            //重名名输出文件,因为可能同名,会覆盖
+            var jarName = jarInput.name
+            val md5Name = DigestUtils.md5Hex(jarInput.file.absolutePath)
+            if (jarName.endsWith(".jar")) {
+                jarName = jarName.substring(0, jarName.length - 4)
+            }
+            val jarFile = JarFile(jarInput.file)
+            val enumeration = jarFile.entries()
+            val tmpFile = File(jarInput.file.getParent() + File.separator + "classes_temp.jar")
+            //避免上次的缓存被重复插入
+            if (tmpFile.exists()) {
+                tmpFile.delete()
+            }
+            val jarOutputStream = JarOutputStream(FileOutputStream(tmpFile))
+            //用于保存
+            while (enumeration.hasMoreElements()) {
+                val jarEntry = (enumeration.nextElement()) as JarEntry
+                val inputStream = jarFile.getInputStream(jarEntry)
+                var entryName = jarEntry.name
+                val zipEntry = ZipEntry(entryName)
+                jarOutputStream.putNextEntry(zipEntry)
+                //插桩class
+                //class文件处理
+                if (entryName.endsWith("Activity.class")) {
+                    println("----------- handleJarInputs $entryName -------true----")
+                    val classReader = ClassReader(IOUtils.toByteArray(inputStream))
+                    val classWriter = ClassWriter(classReader, ClassWriter.COMPUTE_MAXS)
+                    val cv = LifecycleClassVisitor(classWriter)
+                    classReader.accept(cv, EXPAND_FRAMES)
+                    val code = classWriter.toByteArray()
+                    jarOutputStream.write(code)
+                } else {
+                    jarOutputStream.write(IOUtils.toByteArray(inputStream))
+                }
+                jarOutputStream.closeEntry()
+            }
+            //结束
+            jarOutputStream.close()
+            jarFile.close()
+            val dest = outputProvider.getContentLocation(
+                jarName + md5Name,
+                jarInput.contentTypes, jarInput.scopes, Format.JAR
+            )
+            FileUtils.copyFile(tmpFile, dest)
+            tmpFile.delete()
+        }
     }
 }
+
+/**
+ * 处理Jar中的class文件
+ */

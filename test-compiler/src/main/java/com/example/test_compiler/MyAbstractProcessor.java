@@ -63,7 +63,6 @@ public class MyAbstractProcessor extends AbstractProcessor {
     }
     @Override
     public boolean process(Set<? extends TypeElement> set, RoundEnvironment roundEnvironment) {
-
         if (set!=null&& set.size()>0 ) {
             Set<? extends Element> routeElements = roundEnvironment.getElementsAnnotatedWith(MyRouter.class);
             try {
