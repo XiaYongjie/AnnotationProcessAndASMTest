@@ -19,6 +19,8 @@
             </intent-filter>
         </activity>
         <activity android:name=".HookActivity" />
+        <activity android:name=".jetpack.LiveDataActivity" />
+        <activity android:name=".coroutines.CoroutinesActivity"/>
     </application>
 
 </manifest>

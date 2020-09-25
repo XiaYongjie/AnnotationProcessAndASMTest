@@ -11,7 +11,6 @@ public class LifecycleOnCreateMethodVisitor extends MethodVisitor {
 
     @Override
     public void visitCode() {
-        //方法执行前插入
         mv.visitLdcInsn("TAG");
         mv.visitTypeInsn(Opcodes.NEW, "java/lang/StringBuilder");
         mv.visitInsn(Opcodes.DUP);
@@ -27,7 +26,6 @@ public class LifecycleOnCreateMethodVisitor extends MethodVisitor {
         mv.visitInsn(Opcodes.POP);
 
         super.visitCode();
-        //方法执行后插入
     }
 
     @Override

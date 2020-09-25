@@ -16,7 +16,7 @@ public class LifecycleClassVisitor extends ClassVisitor implements Opcodes {
     @Override
     public void visit(int version, int access, String name, String signature,
                       String superName, String[] interfaces) {
-        System.out.println("LifecycleClassVisitor : visit -----> started ：" + name);
+        System.out.println("LifecycleClassVisitor : visit -----> started:" + name);
         this.mClassName = name;
         super.visit(version, access, name, signature, superName, interfaces);
     }
@@ -24,7 +24,7 @@ public class LifecycleClassVisitor extends ClassVisitor implements Opcodes {
     @Override
     public MethodVisitor visitMethod(int access, String name, String desc,
                                      String signature, String[] exceptions) {
-        System.out.println("LifecycleClassVisitor : visitMethod : " + name);
+        System.out.println("LifecycleClassVisitor : visitMethod :" + name);
         MethodVisitor mv = cv.visitMethod(access, name, desc, signature, exceptions);
         //匹配FragmentActivity
             if ("onCreate".equals(name) ) {
